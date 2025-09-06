@@ -9,17 +9,17 @@ class ClipboardRepository implements IClipboardRepository {
     }
     getClipBoardHistory(limit: number): CopyItem[] {
         try {
-            const clipboardHistory: CopyItem[] = this.db.prepare(`select * from clipboardHistories order by copyTime limit ${limit}`).all() as CopyItem[];
+            const clipboardHistory: CopyItem[] = this.db.prepare(`select * from clipboardHistories order by copyTime desc limit ${limit}`).all() as CopyItem[];
             return clipboardHistory;
         } catch (error) {
             throw new Error(`Error getting clipboard history: ${error}`);
         }
     }
-    addToClipBoardHistory(content: string): boolean {
+    addToClipBoardHistory(content: string): CopyItem {
         try {
             const now = new Date().toISOString();
             this.db.prepare('insert into clipboardHistories (content, copyTime) values (?,?)').run(content, now);
-            return true
+            return { content, copyTime: now }
         } catch (error) {
             throw new Error(`Error getting clipboard history: ${error}`);
         }

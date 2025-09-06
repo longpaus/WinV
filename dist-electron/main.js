@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { app, clipboard, BrowserWindow } from "electron";
+import { app, clipboard, BrowserWindow, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path, { dirname, join } from "node:path";
 import fs from "node:fs";
@@ -36,7 +36,7 @@ class ClipboardRepository {
   }
   getClipBoardHistory(limit) {
     try {
-      const clipboardHistory = this.db.prepare(`select * from clipboardHistories order by copyTime limit ${limit}`).all();
+      const clipboardHistory = this.db.prepare(`select * from clipboardHistories order by copyTime desc limit ${limit}`).all();
       return clipboardHistory;
     } catch (error) {
       throw new Error(`Error getting clipboard history: ${error}`);
@@ -46,34 +46,43 @@ class ClipboardRepository {
     try {
       const now = (/* @__PURE__ */ new Date()).toISOString();
       this.db.prepare("insert into clipboardHistories (content, copyTime) values (?,?)").run(content, now);
-      return true;
+      return { content, copyTime: now };
     } catch (error) {
       throw new Error(`Error getting clipboard history: ${error}`);
     }
   }
 }
 class ClipboardTracker {
-  constructor() {
+  constructor(onChange) {
     __publicField(this, "lastText");
     __publicField(this, "repo");
-    this.lastText = "";
-    this.repo = null;
+    __publicField(this, "onChange");
+    this.repo = new ClipboardRepository();
+    this.lastText = this.repo.getClipBoardHistory(1)[0].content;
+    this.onChange = onChange;
   }
   startTracking() {
-    if (this.repo === null) {
-      this.repo = new ClipboardRepository();
-    }
-    console.log("testing");
     setInterval(() => this.tick(), 500);
-    this.tick();
   }
   tick() {
     const currText = clipboard.readText();
-    console.log("hello world!");
     if (currText !== this.lastText) {
       this.lastText = currText;
-      this.repo.addToClipBoardHistory(currText);
+      const copyItem = this.repo.addToClipBoardHistory(currText);
+      this.onChange(copyItem);
     }
+  }
+}
+const windows = /* @__PURE__ */ new Map();
+function createMainWindow(opts) {
+  const win = new BrowserWindow(opts);
+  windows.set(win.id, win);
+  win.on("closed", () => windows.delete(win.id));
+  return win;
+}
+function broadcast(channel, payload) {
+  for (const win of windows.values()) {
+    if (!win.isDestroyed()) win.webContents.send(channel, payload);
   }
 }
 const __filename = fileURLToPath(import.meta.url);
@@ -89,17 +98,15 @@ const preloadCandidates = [
 ];
 const PRELOAD_PATH = preloadCandidates.find((p) => fs.existsSync(p)) ?? preloadCandidates[0];
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win = null;
 function createWindow() {
-  win = new BrowserWindow({
+  const win = createMainWindow({
     title: app.getName(),
     // mac menu title
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
-    width: 1100,
-    height: 700,
+    width: 820,
+    height: 520,
     webPreferences: {
       preload: PRELOAD_PATH,
-      // ✅ correct, ESM-safe preload path
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -118,7 +125,7 @@ app.whenReady().then(() => {
   console.log("userData:", app.getPath("userData"));
   console.log("Preload :", PRELOAD_PATH);
   getDb();
-  const tracker = new ClipboardTracker();
+  const tracker = new ClipboardTracker((payload) => broadcast("clipboard:changed", payload));
   tracker.startTracking();
   createWindow();
   app.on("activate", () => {
@@ -133,6 +140,10 @@ app.on("window-all-closed", () => {
 });
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason);
+});
+ipcMain.handle("get-clipboard-history", () => {
+  const repo = new ClipboardRepository();
+  return repo.getClipBoardHistory(20);
 });
 export {
   MAIN_DIST,

@@ -1,24 +1,17 @@
-import { ipcRenderer, contextBridge } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { CopyItem } from './types/clipboard'
 
-// --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
-  on(...args: Parameters<typeof ipcRenderer.on>) {
-    const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
-  },
-  off(...args: Parameters<typeof ipcRenderer.off>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.off(channel, ...omit)
-  },
-  send(...args: Parameters<typeof ipcRenderer.send>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.send(channel, ...omit)
-  },
-  invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.invoke(channel, ...omit)
-  },
+export interface IElectronAPI {
+  getClipboardHistory: () => Promise<CopyItem[]>
+  onClipboardChanged: (cb: (item: CopyItem) => void) => void
+}
 
-  // You can expose other APTs you need here.
-  // ...
-})
+const api: IElectronAPI = {
+  getClipboardHistory: () => ipcRenderer.invoke('get-clipboard-history'),
+  onClipboardChanged: (cb: (item: CopyItem) => void) => {
+    const listener = (_event: IpcRendererEvent, item: CopyItem) => cb(item)
+    ipcRenderer.on('clipboard:changed', listener)
+  }
+}
+
+contextBridge.exposeInMainWorld('clipboardAPI', api)

@@ -1,31 +1,31 @@
 import { clipboard } from 'electron'
 import IClipboardRepository from './repository/IClipboardRepository'
 import ClipboardRepository from './repository/ClipboardRepository'
+import { CopyItem } from './types/clipboard';
+
+type OnChange = (payload: CopyItem) => void;
 
 class ClipboardTracker {
     private lastText: string;
     private repo: IClipboardRepository | null;
+    private onChange: OnChange;
 
-    constructor() {
-        this.lastText = '';
-        this.repo = null;
+    constructor(onChange: OnChange) {
+        this.repo = new ClipboardRepository();
+        this.lastText = this.repo.getClipBoardHistory(1)[0].content;
+        this.onChange = onChange;
     }
     startTracking() {
-        if (this.repo === null) {
-            this.repo = new ClipboardRepository();
-        }
-        console.log("testing")
         setInterval(() => this.tick(), 500);
-        this.tick()
     }
 
     private tick() {
         const currText = clipboard.readText();
-        console.log("hello world!")
 
         if (currText !== this.lastText) {
             this.lastText = currText;
-            this.repo!.addToClipBoardHistory(currText);
+            const copyItem = this.repo!.addToClipBoardHistory(currText);
+            this.onChange(copyItem)
         }
 
     }

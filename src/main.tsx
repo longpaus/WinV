@@ -10,6 +10,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 // Use contextBridge
-window.ipcRenderer.on('main-process-message', (_event, message) => {
-  console.log(message)
-})
+// This is a placeholder for any future IPC communication from the main process to the renderer process.
+// window.clipboardAPI.onMainProcessMessage((_event, message) => {
+//   console.log(message)
+// })

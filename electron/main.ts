@@ -1,11 +1,13 @@
 // main.ts (macOS, ESM)
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path, { dirname, join } from 'node:path';
 import fs from 'node:fs';
 import { getDb } from './db';
 import ClipboardTracker from './clipboard';
-
+import ClipboardRepository from './repository/ClipboardRepository';
+import { createMainWindow, broadcast } from './windowManager'
+import { CopyItem } from './types/clipboard'
 // Optional: silence GPU dev noise on mac
 // app.disableHardwareAcceleration();
 
@@ -31,16 +33,14 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
-let win: BrowserWindow | null = null;
-
 function createWindow() {
-  win = new BrowserWindow({
+  const win = createMainWindow({
     title: app.getName(), // mac menu title
     icon: path.join(process.env.VITE_PUBLIC!, 'electron-vite.svg'),
-    width: 1100,
-    height: 700,
+    width: 820,
+    height: 520,
     webPreferences: {
-      preload: PRELOAD_PATH,     // ✅ correct, ESM-safe preload path
+      preload: PRELOAD_PATH,
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -68,7 +68,7 @@ app.whenReady()
     console.log('Preload :', PRELOAD_PATH);
 
     getDb(); // Ensure DB + schema
-    const tracker = new ClipboardTracker();
+    const tracker = new ClipboardTracker((payload: CopyItem) => broadcast("clipboard:changed", payload));
     tracker.startTracking(); // Start clipboard polling
 
     createWindow();
@@ -92,3 +92,8 @@ app.on('window-all-closed', () => {
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });
+
+ipcMain.handle('get-clipboard-history', () => {
+  const repo = new ClipboardRepository();
+  return repo.getClipBoardHistory(20)
+})
