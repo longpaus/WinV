@@ -9,8 +9,10 @@ export function createMainWindow(opts: BrowserWindowConstructorOptions) {
     return win;
 }
 export function broadcast(channel: string, payload: object) {
+    console.log("window values: ", windows.values())
     for (const win of windows.values()) {
         if (!win.isDestroyed()) win.webContents.send(channel, payload);
     }
 }
+
 

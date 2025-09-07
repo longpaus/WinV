@@ -5,6 +5,9 @@ const api = {
   onClipboardChanged: (cb) => {
     const listener = (_event, item) => cb(item);
     electron.ipcRenderer.on("clipboard:changed", listener);
+    return () => {
+      electron.ipcRenderer.removeListener("clipboard:changed", listener);
+    };
   }
 };
 electron.contextBridge.exposeInMainWorld("clipboardAPI", api);

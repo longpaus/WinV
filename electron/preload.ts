@@ -3,7 +3,7 @@ import { CopyItem } from './types/clipboard'
 
 export interface IElectronAPI {
   getClipboardHistory: () => Promise<CopyItem[]>
-  onClipboardChanged: (cb: (item: CopyItem) => void) => void
+  onClipboardChanged: (cb: (item: CopyItem) => void) => () => void
 }
 
 const api: IElectronAPI = {
@@ -11,6 +11,9 @@ const api: IElectronAPI = {
   onClipboardChanged: (cb: (item: CopyItem) => void) => {
     const listener = (_event: IpcRendererEvent, item: CopyItem) => cb(item)
     ipcRenderer.on('clipboard:changed', listener)
+    return () => {
+      ipcRenderer.removeListener('clipboard:changed', listener)
+    }
   }
 }
 

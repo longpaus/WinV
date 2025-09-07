@@ -23,6 +23,7 @@ class ClipboardTracker {
         const currText = clipboard.readText();
 
         if (currText !== this.lastText) {
+            console.log("add to db: ", currText)
             this.lastText = currText;
             const copyItem = this.repo!.addToClipBoardHistory(currText);
             this.onChange(copyItem)

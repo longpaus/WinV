@@ -17,9 +17,13 @@ function App() {
       }
     });
 
-    window.clipboardAPI.onClipboardChanged(newItem => {
+    const cleanup = window.clipboardAPI.onClipboardChanged(newItem => {
       setClipboardHistory(prevHistory => [newItem, ...prevHistory]);
     });
+
+    return () => {
+      cleanup();
+    };
   }, []);
 
   const handleCopy = (e: React.MouseEvent, item: ClipboardHistory) => {

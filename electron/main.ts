@@ -105,7 +105,6 @@ function revealWindow() {
 // Global shortcut
 // ----------------------
 function registerShortcuts() {
-  // NOTE: No spaces, capital letter:
   const ok = globalShortcut.register('Alt+V', revealWindow); // ⌥V
 
   if (!ok) {

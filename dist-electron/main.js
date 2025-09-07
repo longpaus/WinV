@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { app, clipboard, BrowserWindow, ipcMain } from "electron";
+import { app, clipboard, BrowserWindow, globalShortcut, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path, { dirname, join } from "node:path";
 import fs from "node:fs";
@@ -67,6 +67,7 @@ class ClipboardTracker {
   tick() {
     const currText = clipboard.readText();
     if (currText !== this.lastText) {
+      console.log("add to db: ", currText);
       this.lastText = currText;
       const copyItem = this.repo.addToClipBoardHistory(currText);
       this.onChange(copyItem);
@@ -75,14 +76,15 @@ class ClipboardTracker {
 }
 const windows = /* @__PURE__ */ new Map();
 function createMainWindow(opts) {
-  const win = new BrowserWindow(opts);
-  windows.set(win.id, win);
-  win.on("closed", () => windows.delete(win.id));
-  return win;
+  const win2 = new BrowserWindow(opts);
+  windows.set(win2.id, win2);
+  win2.on("closed", () => windows.delete(win2.id));
+  return win2;
 }
 function broadcast(channel, payload) {
-  for (const win of windows.values()) {
-    if (!win.isDestroyed()) win.webContents.send(channel, payload);
+  console.log("window values: ", windows.values());
+  for (const win2 of windows.values()) {
+    if (!win2.isDestroyed()) win2.webContents.send(channel, payload);
   }
 }
 const __filename = fileURLToPath(import.meta.url);
@@ -98,17 +100,23 @@ const preloadCandidates = [
 ];
 const PRELOAD_PATH = preloadCandidates.find((p) => fs.existsSync(p)) ?? preloadCandidates[0];
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-function createWindow() {
-  const win = createMainWindow({
+let win = null;
+let isQuitting = false;
+function getOrCreateWindow() {
+  if (win && !win.isDestroyed()) return win;
+  win = createMainWindow({
     title: app.getName(),
-    // mac menu title
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     width: 820,
     height: 520,
+    show: false,
+    // keep hidden until we want to reveal
     webPreferences: {
       preload: PRELOAD_PATH,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // If you want background timers to keep running when hidden:
+      backgroundThrottling: false
     }
   });
   if (VITE_DEV_SERVER_URL) {
@@ -116,27 +124,68 @@ function createWindow() {
   } else {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+  win.once("ready-to-show", () => {
+  });
+  win.on("close", (e) => {
+    if (process.platform === "darwin" && !isQuitting) {
+      e.preventDefault();
+      win == null ? void 0 : win.hide();
+    } else {
+      win = null;
+    }
+  });
   win.webContents.on("did-finish-load", () => {
     win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
   });
+  return win;
+}
+function revealWindow() {
+  const w = getOrCreateWindow();
+  if (w.isMinimized()) w.restore();
+  w.show();
+  if (process.platform !== "darwin") {
+    w.setAlwaysOnTop(true, "floating");
+    w.focus();
+    setTimeout(() => w.setAlwaysOnTop(false), 200);
+  } else {
+    w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    w.focus();
+    setTimeout(() => w.setVisibleOnAllWorkspaces(false), 200);
+  }
+}
+function registerShortcuts() {
+  const ok = globalShortcut.register("Alt+V", revealWindow);
+  if (!ok) {
+    console.error("Failed to register global shortcut Alt+V");
+  }
 }
 app.whenReady().then(() => {
   console.log("App Name:", app.getName());
   console.log("userData:", app.getPath("userData"));
   console.log("Preload :", PRELOAD_PATH);
   getDb();
-  const tracker = new ClipboardTracker((payload) => broadcast("clipboard:changed", payload));
+  const tracker = new ClipboardTracker(
+    (payload) => broadcast("clipboard:changed", payload)
+  );
   tracker.startTracking();
-  createWindow();
+  getOrCreateWindow();
+  registerShortcuts();
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) getOrCreateWindow();
+    revealWindow();
   });
 }).catch((err) => {
   console.error("App init failed:", err);
   app.quit();
 });
+app.on("before-quit", () => {
+  isQuitting = true;
+});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
 });
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason);
