@@ -1,27 +1,22 @@
 // main.ts (macOS, ESM)
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path, { dirname, join } from 'node:path';
 import fs from 'node:fs';
 import { getDb } from './db';
 import ClipboardTracker from './clipboard';
 import ClipboardRepository from './repository/ClipboardRepository';
-import { createMainWindow, broadcast } from './windowManager'
-import { CopyItem } from './types/clipboard'
-// Optional: silence GPU dev noise on mac
-// app.disableHardwareAcceleration();
+import { createMainWindow, broadcast } from './windowManager';
+import { CopyItem } from './types/clipboard';
 
-// --- Recreate __filename/__dirname for ESM ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// App root & build dirs
 process.env.APP_ROOT = path.join(__dirname, '..');
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'];
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron');
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist');
 
-// Resolve preload path robustly (supports either preload.mjs or preload/index.js)
 const preloadCandidates = [
   join(MAIN_DIST, 'preload.mjs'),
   join(MAIN_DIST, 'preload/index.js'),
@@ -33,49 +28,111 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
-function createWindow() {
-  const win = createMainWindow({
-    title: app.getName(), // mac menu title
+// ----------------------
+// Keep a single window
+// ----------------------
+let win: BrowserWindow | null = null;
+let isQuitting = false;
+
+function getOrCreateWindow() {
+  if (win && !win.isDestroyed()) return win;
+
+  win = createMainWindow({
+    title: app.getName(),
     icon: path.join(process.env.VITE_PUBLIC!, 'electron-vite.svg'),
     width: 820,
     height: 520,
+    show: false, // keep hidden until we want to reveal
     webPreferences: {
       preload: PRELOAD_PATH,
       contextIsolation: true,
       nodeIntegration: false,
+      // If you want background timers to keep running when hidden:
+      backgroundThrottling: false,
     },
   });
 
   if (VITE_DEV_SERVER_URL) {
+    // Dev: load Vite server ONCE. Subsequent show/hide is instant.
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'));
   }
 
+  win.once('ready-to-show', () => {
+    // Don't auto-show; we’ll show on hotkey or activation
+  });
+
+  // Important: hide instead of destroy, so next reveal is instant
+  win.on('close', (e) => {
+    if (process.platform === 'darwin' && !isQuitting) {
+      e.preventDefault();
+      win?.hide();
+    } else {
+      win = null;
+    }
+  });
+
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString());
   });
+
+  return win;
+}
+
+function revealWindow() {
+  const w = getOrCreateWindow();
+
+  if (w.isMinimized()) w.restore();
+
+  // Show & focus quickly without reloading the page
+  w.show();
+
+  if (process.platform !== 'darwin') {
+    // Nudge focus on Win/Linux
+    w.setAlwaysOnTop(true, 'floating');
+    w.focus();
+    setTimeout(() => w.setAlwaysOnTop(false), 200);
+  } else {
+    // macOS: hop across spaces briefly so reveal is reliable
+    w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    w.focus();
+    setTimeout(() => w.setVisibleOnAllWorkspaces(false), 200);
+  }
+}
+
+// ----------------------
+// Global shortcut
+// ----------------------
+function registerShortcuts() {
+  // NOTE: No spaces, capital letter:
+  const ok = globalShortcut.register('Alt+V', revealWindow); // ⌥V
+
+  if (!ok) {
+    console.error('Failed to register global shortcut Alt+V');
+  }
 }
 
 app.whenReady()
   .then(() => {
-    // (Optional) Give your app a nice name on mac; controls ~/Library/Application Support/<name>/
-    // app.setName('Clipboard Tracker');
-
-    // Log where your DB will live (mac: ~/Library/Application Support/<AppName>/app.db)
     console.log('App Name:', app.getName());
     console.log('userData:', app.getPath('userData'));
     console.log('Preload :', PRELOAD_PATH);
 
-    getDb(); // Ensure DB + schema
-    const tracker = new ClipboardTracker((payload: CopyItem) => broadcast("clipboard:changed", payload));
-    tracker.startTracking(); // Start clipboard polling
+    getDb();
 
-    createWindow();
+    const tracker = new ClipboardTracker((payload: CopyItem) =>
+      broadcast('clipboard:changed', payload)
+    );
+    tracker.startTracking();
+
+    getOrCreateWindow();     // create once, keep around
+    registerShortcuts();
 
     app.on('activate', () => {
-      // mac: re-create a window when dock icon is clicked and no other windows are open
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      // mac: re-open / show main window on dock click
+      if (BrowserWindow.getAllWindows().length === 0) getOrCreateWindow();
+      revealWindow();
     });
   })
   .catch((err) => {
@@ -83,17 +140,23 @@ app.whenReady()
     app.quit();
   });
 
-// mac behavior: keep app running until Cmd+Q
+app.on('before-quit', () => { isQuitting = true; });
+
+// mac stays running until Cmd+Q; other OSes quit when last window closed
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Helpful while debugging rejections
+// Clean up shortcuts
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+});
+
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });
 
 ipcMain.handle('get-clipboard-history', () => {
   const repo = new ClipboardRepository();
-  return repo.getClipBoardHistory(20)
-})
+  return repo.getClipBoardHistory(20);
+});

@@ -17,12 +17,21 @@ export function ContentDisplay({ selectedItem }: ContentDisplayProps) {
 
   return (
     <main className="w-2/3 p-4">
-      <div>
-        <h1 className="text-2xl font-bold mb-4">Content</h1>
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <pre className="text-gray-300 whitespace-pre-wrap font-mono">{selectedItem.content}</pre>
-          <p className="text-sm text-gray-500 mt-4">{new Date(selectedItem.copyTime).toLocaleString()}</p>
+      <h1 className="text-2xl font-bold mb-4">Content</h1>
+
+      {/* Fixed 400px height container */}
+      <div className="bg-gray-800 p-4 rounded-lg flex flex-col h-[410px]">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-auto">
+          <pre className="text-gray-300 whitespace-pre-wrap font-mono">
+            {selectedItem.content}
+          </pre>
         </div>
+
+        {/* Fixed timestamp */}
+        <p className="text-sm text-gray-500 mt-4 shrink-0">
+          {new Date(selectedItem.copyTime).toLocaleString()}
+        </p>
       </div>
     </main>
   );
