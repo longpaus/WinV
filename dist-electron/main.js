@@ -29,6 +29,32 @@ function initSchema(db2) {
     CREATE INDEX IF NOT EXISTS idx_clipboard_copyTime ON clipboardHistories(copyTime)
     `).run();
 }
+const DEFAULT_CONFIG = {
+  maxHistoryDays: 30
+};
+let cached = null;
+function configPath() {
+  return path.join(app.getPath("userData"), "config.json");
+}
+function getConfig() {
+  if (cached) return cached;
+  const file = configPath();
+  let loaded;
+  try {
+    if (fs.existsSync(file)) {
+      const raw = JSON.parse(fs.readFileSync(file, "utf-8"));
+      loaded = { ...DEFAULT_CONFIG, ...raw };
+    } else {
+      loaded = { ...DEFAULT_CONFIG };
+      fs.writeFileSync(file, JSON.stringify(loaded, null, 2));
+    }
+  } catch (err) {
+    console.error("Failed to load config, using defaults:", err);
+    loaded = { ...DEFAULT_CONFIG };
+  }
+  cached = loaded;
+  return loaded;
+}
 class ClipboardRepository {
   constructor() {
     __publicField(this, "db");
@@ -46,10 +72,16 @@ class ClipboardRepository {
     try {
       const now = (/* @__PURE__ */ new Date()).toISOString();
       this.db.prepare("insert into clipboardHistories (content, copyTime) values (?,?)").run(content, now);
+      this.trimOlderThanMaxAge();
       return { content, copyTime: now };
     } catch (error) {
       throw new Error(`Error getting clipboard history: ${error}`);
     }
+  }
+  trimOlderThanMaxAge() {
+    const { maxHistoryDays } = getConfig();
+    const cutoff = new Date(Date.now() - maxHistoryDays * 24 * 60 * 60 * 1e3).toISOString();
+    this.db.prepare("DELETE FROM clipboardHistories WHERE copyTime < ?").run(cutoff);
   }
 }
 class ClipboardTracker {
@@ -87,9 +119,9 @@ function broadcast(channel, payload) {
     if (!win2.isDestroyed()) win2.webContents.send(channel, payload);
   }
 }
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-process.env.APP_ROOT = path.join(__dirname, "..");
+const __filename$1 = fileURLToPath(import.meta.url);
+const __dirname$1 = dirname(__filename$1);
+process.env.APP_ROOT = path.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");

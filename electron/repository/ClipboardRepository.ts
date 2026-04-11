@@ -2,6 +2,7 @@ import { CopyItem } from "../types/clipboard";
 import IClipboardRepository from "./IClipboardRepository";
 import type { Database as DBType } from "better-sqlite3"
 import { getDb } from '../db'
+import { getConfig } from '../config'
 class ClipboardRepository implements IClipboardRepository {
     db: DBType;
     constructor() {
@@ -19,10 +20,17 @@ class ClipboardRepository implements IClipboardRepository {
         try {
             const now = new Date().toISOString();
             this.db.prepare('insert into clipboardHistories (content, copyTime) values (?,?)').run(content, now);
+            this.trimOlderThanMaxAge();
             return { content, copyTime: now }
         } catch (error) {
             throw new Error(`Error getting clipboard history: ${error}`);
         }
+    }
+
+    private trimOlderThanMaxAge(): void {
+        const { maxHistoryDays } = getConfig();
+        const cutoff = new Date(Date.now() - maxHistoryDays * 24 * 60 * 60 * 1000).toISOString();
+        this.db.prepare('DELETE FROM clipboardHistories WHERE copyTime < ?').run(cutoff);
     }
 
 }
