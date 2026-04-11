@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import './App.css';
 import { ClipboardHistory } from './types';
 import { HistorySidebar } from './components/HistorySidebar';
@@ -61,15 +61,17 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [clipboardHistory, selectedItem, pasteItem]);
 
+  const historyRef = useRef(clipboardHistory);
   useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && clipboardHistory.length > 0) {
-        setSelectedItem(clipboardHistory[0]);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    historyRef.current = clipboardHistory;
   }, [clipboardHistory]);
+
+  useEffect(() => {
+    return window.clipboardAPI.onWindowShown(() => {
+      const first = historyRef.current[0];
+      if (first) setSelectedItem(first);
+    });
+  }, []);
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[color:var(--bg)] text-[color:var(--fg)] overflow-hidden rounded-xl border border-[color:var(--border)]">

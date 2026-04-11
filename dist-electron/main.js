@@ -187,6 +187,7 @@ function revealWindow() {
     w.focus();
     setTimeout(() => w.setVisibleOnAllWorkspaces(false), 200);
   }
+  w.webContents.send("window-shown");
 }
 function registerShortcuts() {
   const ok = globalShortcut.register("Alt+V", revealWindow);

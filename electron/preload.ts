@@ -4,6 +4,7 @@ import { CopyItem } from './types/clipboard'
 export interface IElectronAPI {
   getClipboardHistory: () => Promise<CopyItem[]>
   onClipboardChanged: (cb: (item: CopyItem) => void) => () => void
+  onWindowShown: (cb: () => void) => () => void
   hideWindow: () => Promise<void>
   pasteItem: (text: string) => Promise<void>
 }
@@ -15,6 +16,13 @@ const api: IElectronAPI = {
     ipcRenderer.on('clipboard:changed', listener)
     return () => {
       ipcRenderer.removeListener('clipboard:changed', listener)
+    }
+  },
+  onWindowShown: (cb: () => void) => {
+    const listener = () => cb()
+    ipcRenderer.on('window-shown', listener)
+    return () => {
+      ipcRenderer.removeListener('window-shown', listener)
     }
   },
   hideWindow: () => ipcRenderer.invoke('hide-window'),
