@@ -143,6 +143,8 @@ function getOrCreateWindow() {
     height: 520,
     show: false,
     // keep hidden until we want to reveal
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+    backgroundColor: "#0b0b0f",
     webPreferences: {
       preload: PRELOAD_PATH,
       contextIsolation: true,
@@ -225,6 +227,9 @@ process.on("unhandledRejection", (reason) => {
 ipcMain.handle("get-clipboard-history", () => {
   const repo = new ClipboardRepository();
   return repo.getClipBoardHistory(20);
+});
+ipcMain.handle("hide-window", () => {
+  if (win && !win.isDestroyed()) win.hide();
 });
 export {
   MAIN_DIST,

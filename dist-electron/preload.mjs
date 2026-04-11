@@ -1,13 +1,1 @@
-"use strict";
-const electron = require("electron");
-const api = {
-  getClipboardHistory: () => electron.ipcRenderer.invoke("get-clipboard-history"),
-  onClipboardChanged: (cb) => {
-    const listener = (_event, item) => cb(item);
-    electron.ipcRenderer.on("clipboard:changed", listener);
-    return () => {
-      electron.ipcRenderer.removeListener("clipboard:changed", listener);
-    };
-  }
-};
-electron.contextBridge.exposeInMainWorld("clipboardAPI", api);
+"use strict";const e=require("electron"),o={getClipboardHistory:()=>e.ipcRenderer.invoke("get-clipboard-history"),onClipboardChanged:i=>{const r=(d,n)=>i(n);return e.ipcRenderer.on("clipboard:changed",r),()=>{e.ipcRenderer.removeListener("clipboard:changed",r)}},hideWindow:()=>e.ipcRenderer.invoke("hide-window")};e.contextBridge.exposeInMainWorld("clipboardAPI",o);

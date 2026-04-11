@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import './App.css';
 import { ClipboardHistory } from './types';
 import { HistorySidebar } from './components/HistorySidebar';
@@ -7,43 +7,95 @@ import { ContentDisplay } from './components/ContentDisplay';
 function App() {
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardHistory[]>([]);
   const [selectedItem, setSelectedItem] = useState<ClipboardHistory | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   useEffect(() => {
-    window.clipboardAPI.getClipboardHistory().then(history => {
+    window.clipboardAPI.getClipboardHistory().then((history) => {
       setClipboardHistory(history);
       if (history.length > 0) {
         setSelectedItem(history[0]);
       }
     });
 
-    const cleanup = window.clipboardAPI.onClipboardChanged(newItem => {
-      setClipboardHistory(prevHistory => [newItem, ...prevHistory]);
+    const cleanup = window.clipboardAPI.onClipboardChanged((newItem) => {
+      setClipboardHistory((prev) => [newItem, ...prev]);
+      setSelectedItem((prev) => prev ?? newItem);
     });
 
-    return () => {
-      cleanup();
-    };
+    return cleanup;
   }, []);
 
-  const handleCopy = (e: React.MouseEvent, item: ClipboardHistory) => {
-    e.stopPropagation(); // Prevent the selection from changing
+  const copyAndHide = useCallback((item: ClipboardHistory) => {
     navigator.clipboard.writeText(item.content).then(() => {
-      setCopiedId(item.id);
-      setTimeout(() => setCopiedId(null), 2000);
+      window.clipboardAPI.hideWindow?.();
     });
-  };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (clipboardHistory.length === 0) {
+        if (e.key === 'Escape') window.clipboardAPI.hideWindow?.();
+        return;
+      }
+      const idx = selectedItem
+        ? clipboardHistory.findIndex((i) => i.id === selectedItem.id)
+        : -1;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = idx < 0 ? 0 : Math.min(clipboardHistory.length - 1, idx + 1);
+        setSelectedItem(clipboardHistory[next]);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const next = idx <= 0 ? 0 : idx - 1;
+        setSelectedItem(clipboardHistory[next]);
+      } else if (e.key === 'Enter') {
+        const target = selectedItem ?? clipboardHistory[0];
+        if (target) {
+          e.preventDefault();
+          copyAndHide(target);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        window.clipboardAPI.hideWindow?.();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [clipboardHistory, selectedItem, copyAndHide]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && clipboardHistory.length > 0) {
+        setSelectedItem(clipboardHistory[0]);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [clipboardHistory]);
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
-      <HistorySidebar
-        history={clipboardHistory}
-        selectedItem={selectedItem}
-        copiedId={copiedId}
-        onSelectItem={setSelectedItem}
-        onCopyItem={handleCopy}
-      />
-      <ContentDisplay selectedItem={selectedItem} />
+    <div className="flex flex-col h-screen w-screen bg-[color:var(--bg)] text-[color:var(--fg)] overflow-hidden rounded-xl border border-[color:var(--border)]">
+      <header
+        className="shrink-0 flex items-center px-4 h-11 border-b border-[color:var(--border)] select-none"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      >
+        <div className="flex items-center gap-2 pl-16">
+          <span className="text-[13px] font-semibold tracking-tight text-[color:var(--fg)]">
+            Clipboard
+          </span>
+          <span className="text-[11px] text-[color:var(--fg-subtle)] tabular-nums">
+            {clipboardHistory.length} {clipboardHistory.length === 1 ? 'item' : 'items'}
+          </span>
+        </div>
+      </header>
+      <div className="flex-1 min-h-0 flex">
+        <HistorySidebar
+          history={clipboardHistory}
+          selectedItem={selectedItem}
+          onSelectItem={setSelectedItem}
+        />
+        <ContentDisplay selectedItem={selectedItem} />
+      </div>
     </div>
   );
 }

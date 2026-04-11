@@ -5,6 +5,7 @@ declare global {
     clipboardAPI: {
       getClipboardHistory: () => Promise<ClipboardHistory[]>;
       onClipboardChanged: (cb: (item: ClipboardHistory) => void) => () => void;
+      hideWindow: () => Promise<void>;
     };
   }
 }
