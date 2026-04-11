@@ -97,6 +97,9 @@ class ClipboardTracker {
   startTracking() {
     setInterval(() => this.tick(), 500);
   }
+  suppressText(text) {
+    this.lastText = text;
+  }
   tick() {
     const currText = clipboard.readText();
     if (currText !== this.lastText) {
@@ -135,6 +138,7 @@ const PRELOAD_PATH = preloadCandidates.find((p) => fs.existsSync(p)) ?? preloadC
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win = null;
 let isQuitting = false;
+let tracker = null;
 function getOrCreateWindow() {
   if (win && !win.isDestroyed()) return win;
   win = createMainWindow({
@@ -200,7 +204,7 @@ app.whenReady().then(() => {
   console.log("userData:", app.getPath("userData"));
   console.log("Preload :", PRELOAD_PATH);
   getDb();
-  const tracker = new ClipboardTracker(
+  tracker = new ClipboardTracker(
     (payload) => broadcast("clipboard:changed", payload)
   );
   tracker.startTracking();
@@ -235,6 +239,7 @@ ipcMain.handle("hide-window", () => {
 });
 ipcMain.handle("paste-item", async (_evt, text) => {
   if (typeof text !== "string") return;
+  tracker == null ? void 0 : tracker.suppressText(text);
   clipboard.writeText(text);
   if (process.platform === "darwin") {
     app.hide();

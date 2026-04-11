@@ -19,6 +19,10 @@ class ClipboardTracker {
         setInterval(() => this.tick(), 500);
     }
 
+    suppressText(text: string) {
+        this.lastText = text;
+    }
+
     private tick() {
         const currText = clipboard.readText();
 

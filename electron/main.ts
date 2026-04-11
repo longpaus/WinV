@@ -34,6 +34,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 // ----------------------
 let win: BrowserWindow | null = null;
 let isQuitting = false;
+let tracker: ClipboardTracker | null = null;
 
 function getOrCreateWindow() {
   if (win && !win.isDestroyed()) return win;
@@ -125,7 +126,7 @@ app.whenReady()
 
     getDb();
 
-    const tracker = new ClipboardTracker((payload: CopyItem) =>
+    tracker = new ClipboardTracker((payload: CopyItem) =>
       broadcast('clipboard:changed', payload)
     );
     tracker.startTracking();
@@ -171,6 +172,7 @@ ipcMain.handle('hide-window', () => {
 
 ipcMain.handle('paste-item', async (_evt, text: string) => {
   if (typeof text !== 'string') return;
+  tracker?.suppressText(text);
   clipboard.writeText(text);
 
   if (process.platform === 'darwin') {
