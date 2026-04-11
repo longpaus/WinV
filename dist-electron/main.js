@@ -91,7 +91,8 @@ class ClipboardTracker {
     __publicField(this, "repo");
     __publicField(this, "onChange");
     this.repo = new ClipboardRepository();
-    this.lastText = this.repo.getClipBoardHistory(1)[0].content;
+    const history = this.repo.getClipBoardHistory(1);
+    this.lastText = history.length > 0 ? history[0].content : "";
     this.onChange = onChange;
   }
   startTracking() {
