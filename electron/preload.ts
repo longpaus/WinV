@@ -5,6 +5,7 @@ export interface IElectronAPI {
   getClipboardHistory: () => Promise<CopyItem[]>
   onClipboardChanged: (cb: (item: CopyItem) => void) => () => void
   hideWindow: () => Promise<void>
+  pasteItem: (text: string) => Promise<void>
 }
 
 const api: IElectronAPI = {
@@ -17,6 +18,7 @@ const api: IElectronAPI = {
     }
   },
   hideWindow: () => ipcRenderer.invoke('hide-window'),
+  pasteItem: (text: string) => ipcRenderer.invoke('paste-item', text),
 }
 
 contextBridge.exposeInMainWorld('clipboardAPI', api)

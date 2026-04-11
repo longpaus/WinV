@@ -5,6 +5,7 @@ import { app, clipboard, BrowserWindow, globalShortcut, ipcMain } from "electron
 import { fileURLToPath } from "node:url";
 import path, { dirname, join } from "node:path";
 import fs from "node:fs";
+import { execFile } from "node:child_process";
 import Database from "better-sqlite3";
 let db = null;
 function getDb() {
@@ -71,9 +72,9 @@ class ClipboardRepository {
   addToClipBoardHistory(content) {
     try {
       const now = (/* @__PURE__ */ new Date()).toISOString();
-      this.db.prepare("insert into clipboardHistories (content, copyTime) values (?,?)").run(content, now);
+      const result = this.db.prepare("insert into clipboardHistories (content, copyTime) values (?,?)").run(content, now);
       this.trimOlderThanMaxAge();
-      return { content, copyTime: now };
+      return { id: Number(result.lastInsertRowid), content, copyTime: now };
     } catch (error) {
       throw new Error(`Error getting clipboard history: ${error}`);
     }
@@ -230,6 +231,26 @@ ipcMain.handle("get-clipboard-history", () => {
 });
 ipcMain.handle("hide-window", () => {
   if (win && !win.isDestroyed()) win.hide();
+});
+ipcMain.handle("paste-item", async (_evt, text) => {
+  if (typeof text !== "string") return;
+  clipboard.writeText(text);
+  if (process.platform === "darwin") {
+    app.hide();
+  } else if (win && !win.isDestroyed()) {
+    win.hide();
+  }
+  if (process.platform !== "darwin") return;
+  await new Promise((resolve) => {
+    execFile(
+      "/usr/bin/osascript",
+      ["-e", 'tell application "System Events" to keystroke "v" using command down'],
+      (err) => {
+        if (err) console.error("paste-item osascript failed:", err);
+        resolve();
+      }
+    );
+  });
 });
 export {
   MAIN_DIST,

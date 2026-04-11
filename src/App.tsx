@@ -24,10 +24,8 @@ function App() {
     return cleanup;
   }, []);
 
-  const copyAndHide = useCallback((item: ClipboardHistory) => {
-    navigator.clipboard.writeText(item.content).then(() => {
-      window.clipboardAPI.hideWindow?.();
-    });
+  const pasteItem = useCallback((item: ClipboardHistory) => {
+    window.clipboardAPI.pasteItem(item.content);
   }, []);
 
   useEffect(() => {
@@ -52,7 +50,7 @@ function App() {
         const target = selectedItem ?? clipboardHistory[0];
         if (target) {
           e.preventDefault();
-          copyAndHide(target);
+          pasteItem(target);
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -61,7 +59,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [clipboardHistory, selectedItem, copyAndHide]);
+  }, [clipboardHistory, selectedItem, pasteItem]);
 
   useEffect(() => {
     const onVisible = () => {

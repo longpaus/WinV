@@ -1,6 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { ClipboardHistory } from '../types';
 
+function CopyButton({ content }: { content: string }) {
+  const onClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.clipboardAPI.pasteItem(content);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Paste"
+      title="Paste"
+      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] text-[color:var(--fg-subtle)] hover:text-[color:var(--fg)] hover:bg-[color:var(--bg-hover)] transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+    </button>
+  );
+}
+
 interface HistorySidebarProps {
   history: ClipboardHistory[];
   selectedItem: ClipboardHistory | null;
@@ -67,7 +89,7 @@ export function HistorySidebar({
               ref={isSelected ? selectedRef : null}
               onClick={() => onSelectItem(item)}
               title={new Date(item.copyTime).toLocaleString()}
-              className={`relative cursor-pointer rounded-[10px] px-3 py-2.5 transition-colors ${
+              className={`group relative cursor-pointer rounded-[10px] px-3 py-2.5 pr-10 transition-colors ${
                 isSelected
                   ? 'bg-[color:var(--accent-bg)]'
                   : 'hover:bg-[color:var(--bg-hover)]'
@@ -91,6 +113,7 @@ export function HistorySidebar({
               <p className="mt-1 text-[11px] text-[color:var(--fg-subtle)]">
                 {formatRelative(item.copyTime)}
               </p>
+              <CopyButton content={item.content} />
             </li>
           );
         })}

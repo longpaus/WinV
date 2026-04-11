@@ -1,8 +1,9 @@
 // main.ts (macOS, ESM)
-import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut, clipboard } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path, { dirname, join } from 'node:path';
 import fs from 'node:fs';
+import { execFile } from 'node:child_process';
 import { getDb } from './db';
 import ClipboardTracker from './clipboard';
 import ClipboardRepository from './repository/ClipboardRepository';
@@ -164,4 +165,28 @@ ipcMain.handle('get-clipboard-history', () => {
 
 ipcMain.handle('hide-window', () => {
   if (win && !win.isDestroyed()) win.hide();
+});
+
+ipcMain.handle('paste-item', async (_evt, text: string) => {
+  if (typeof text !== 'string') return;
+  clipboard.writeText(text);
+
+  if (process.platform === 'darwin') {
+    app.hide();
+  } else if (win && !win.isDestroyed()) {
+    win.hide();
+  }
+
+  if (process.platform !== 'darwin') return;
+
+  await new Promise<void>((resolve) => {
+    execFile(
+      '/usr/bin/osascript',
+      ['-e', 'tell application "System Events" to keystroke "v" using command down'],
+      (err) => {
+        if (err) console.error('paste-item osascript failed:', err);
+        resolve();
+      }
+    );
+  });
 });

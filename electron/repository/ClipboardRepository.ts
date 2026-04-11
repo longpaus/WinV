@@ -19,9 +19,9 @@ class ClipboardRepository implements IClipboardRepository {
     addToClipBoardHistory(content: string): CopyItem {
         try {
             const now = new Date().toISOString();
-            this.db.prepare('insert into clipboardHistories (content, copyTime) values (?,?)').run(content, now);
+            const result = this.db.prepare('insert into clipboardHistories (content, copyTime) values (?,?)').run(content, now);
             this.trimOlderThanMaxAge();
-            return { content, copyTime: now }
+            return { id: Number(result.lastInsertRowid), content, copyTime: now }
         } catch (error) {
             throw new Error(`Error getting clipboard history: ${error}`);
         }
