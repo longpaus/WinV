@@ -1,31 +1,43 @@
-# React + TypeScript + Vite
+# Winv
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight clipboard manager for macOS. Press `⌥V` to instantly access your clipboard history and paste any previous item.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Tracks clipboard history automatically in the background
+- Global hotkey `⌥V` to open/close the window
+- Click any item to paste it into the active app
+- History stored locally in SQLite — nothing leaves your machine
+- Configurable history retention (default: 30 days)
 
-## Expanding the ESLint configuration
+## Install
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+Download the latest `.dmg` from [Releases](https://github.com/longpaus/clipboard-manager/releases), open it, and drag **Winv** to your Applications folder.
 
-- Configure the top-level `parserOptions` property like this:
+On first launch, macOS will block the app because it's unsigned. To open it:
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+1. Right-click `Winv.app` in Applications
+2. Click **Open** then **Open** again in the dialog
+
+You'll also need to grant **Accessibility** permission (System Settings > Privacy & Security > Accessibility) for the paste shortcut to work.
+
+## Build from source
+
+```bash
+git clone https://github.com/longpaus/clipboard-manager.git
+cd clipboard-manager
+npm install
+npm run build
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
-# clipboard-manager
+The installer will be in `release/<version>/`.
+
+## Development
+
+```bash
+npm run dev
+```
+
+## License
+
+MIT
