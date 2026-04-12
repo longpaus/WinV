@@ -3,12 +3,13 @@ import './App.css';
 import { ClipboardHistory } from './types';
 import { HistorySidebar } from './components/HistorySidebar';
 import { ContentDisplay } from './components/ContentDisplay';
-
-const MAX_CLIPBOARD_ITEMS = 200;
+import { MAX_CLIPBOARD_ITEMS, PAGE_SIZE } from './constants';
 
 function App() {
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardHistory[]>([]);
   const [selectedItem, setSelectedItem] = useState<ClipboardHistory | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const isFocusedRef = useRef(document.hasFocus());
 
   useEffect(() => {
@@ -23,10 +24,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    window.clipboardAPI.getClipboardHistory().then((history) => {
-      setClipboardHistory(history);
-      if (history.length > 0) {
-        setSelectedItem(history[0]);
+    window.clipboardAPI.getClipboardHistory(PAGE_SIZE).then(({ items, hasMore: more }) => {
+      setClipboardHistory(items);
+      setHasMore(more);
+      if (items.length > 0) {
+        setSelectedItem(items[0]);
       }
     });
 
@@ -47,6 +49,31 @@ function App() {
   const pasteItem = useCallback((item: ClipboardHistory) => {
     window.clipboardAPI.pasteItem(item.content);
   }, []);
+
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    if (clipboardHistory.length >= MAX_CLIPBOARD_ITEMS) {
+      setHasMore(false);
+      return;
+    }
+
+    setIsLoadingMore(true);
+    const lastItem = clipboardHistory[clipboardHistory.length - 1];
+    const cursor = lastItem ? { copyTime: lastItem.copyTime, id: lastItem.id } : undefined;
+
+    window.clipboardAPI.getClipboardHistory(PAGE_SIZE, cursor).then(({ items, hasMore: moreAvailable }) => {
+      setClipboardHistory((prev) => {
+        const combined = [...prev, ...items];
+        if (combined.length >= MAX_CLIPBOARD_ITEMS) {
+          setHasMore(false);
+          return combined.slice(0, MAX_CLIPBOARD_ITEMS);
+        }
+        setHasMore(moreAvailable);
+        return combined;
+      });
+      setIsLoadingMore(false);
+    });
+  }, [clipboardHistory, hasMore, isLoadingMore]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -113,6 +140,9 @@ function App() {
           history={clipboardHistory}
           selectedItem={selectedItem}
           onSelectItem={setSelectedItem}
+          onLoadMore={loadMore}
+          hasMore={hasMore && clipboardHistory.length < MAX_CLIPBOARD_ITEMS}
+          isLoadingMore={isLoadingMore}
         />
         <ContentDisplay selectedItem={selectedItem} />
       </div>

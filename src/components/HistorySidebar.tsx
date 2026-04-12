@@ -27,6 +27,9 @@ interface HistorySidebarProps {
   history: ClipboardHistory[];
   selectedItem: ClipboardHistory | null;
   onSelectItem: (item: ClipboardHistory) => void;
+  onLoadMore: () => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
 }
 
 function formatRelative(iso: string): string {
@@ -52,6 +55,9 @@ export function HistorySidebar({
   history,
   selectedItem,
   onSelectItem,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
 }: HistorySidebarProps) {
   const selectedRef = useRef<HTMLLIElement | null>(null);
 
@@ -117,6 +123,18 @@ export function HistorySidebar({
             </li>
           );
         })}
+        {hasMore && (
+          <li className="px-3 py-2.5 text-center">
+            <button
+              type="button"
+              onClick={onLoadMore}
+              disabled={isLoadingMore}
+              className="text-[12px] text-[color:var(--fg-subtle)] hover:text-[color:var(--fg)] disabled:opacity-50 transition-colors"
+            >
+              {isLoadingMore ? 'Loading...' : 'Load more'}
+            </button>
+          </li>
+        )}
       </ul>
     </aside>
   );

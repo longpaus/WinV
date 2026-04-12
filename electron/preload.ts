@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import { CopyItem } from './types/clipboard'
 
 export interface IElectronAPI {
-  getClipboardHistory: () => Promise<CopyItem[]>
+  getClipboardHistory: (pageSize: number, cursor?: { copyTime: string; id: number }) => Promise<{ items: CopyItem[]; hasMore: boolean }>
   onClipboardChanged: (cb: (item: CopyItem) => void) => () => void
   onWindowShown: (cb: () => void) => () => void
   hideWindow: () => Promise<void>
@@ -10,7 +10,7 @@ export interface IElectronAPI {
 }
 
 const api: IElectronAPI = {
-  getClipboardHistory: () => ipcRenderer.invoke('get-clipboard-history'),
+  getClipboardHistory: (pageSize, cursor?) => ipcRenderer.invoke('get-clipboard-history', pageSize, cursor),
   onClipboardChanged: (cb: (item: CopyItem) => void) => {
     const listener = (_event: IpcRendererEvent, item: CopyItem) => cb(item)
     ipcRenderer.on('clipboard:changed', listener)

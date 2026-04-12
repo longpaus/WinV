@@ -29,6 +29,9 @@ function initSchema(db2) {
   db2.prepare(`
     CREATE INDEX IF NOT EXISTS idx_clipboard_copyTime ON clipboardHistories(copyTime)
     `).run();
+  db2.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_clipboard_copytime_id ON clipboardHistories(copyTime DESC, id DESC)
+    `).run();
 }
 const DEFAULT_CONFIG = {
   maxHistoryDays: 30
@@ -68,6 +71,25 @@ class ClipboardRepository {
     } catch (error) {
       throw new Error(`Error getting clipboard history: ${error}`);
     }
+  }
+  getClipBoardHistoryPage(limit, cursor) {
+    const fetchCount = limit + 1;
+    let rows;
+    if (cursor) {
+      rows = this.db.prepare(
+        `SELECT * FROM clipboardHistories
+                 WHERE copyTime < ? OR (copyTime = ? AND id < ?)
+                 ORDER BY copyTime DESC, id DESC
+                 LIMIT ?`
+      ).all(cursor.copyTime, cursor.copyTime, cursor.id, fetchCount);
+    } else {
+      rows = this.db.prepare(
+        `SELECT * FROM clipboardHistories ORDER BY copyTime DESC, id DESC LIMIT ?`
+      ).all(fetchCount);
+    }
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    return { items, hasMore };
   }
   addToClipBoardHistory(content) {
     try {
@@ -231,9 +253,9 @@ app.on("will-quit", () => {
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason);
 });
-ipcMain.handle("get-clipboard-history", () => {
+ipcMain.handle("get-clipboard-history", (_evt, pageSize, cursor) => {
   const repo = new ClipboardRepository();
-  return repo.getClipBoardHistory(20);
+  return repo.getClipBoardHistoryPage(pageSize, cursor);
 });
 ipcMain.handle("hide-window", () => {
   if (win && !win.isDestroyed()) win.hide();

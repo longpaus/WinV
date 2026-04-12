@@ -1,5 +1,5 @@
 import { CopyItem } from "../types/clipboard";
-import IClipboardRepository from "./IClipboardRepository";
+import IClipboardRepository, { ClipboardCursor } from "./IClipboardRepository";
 import type { Database as DBType } from "better-sqlite3"
 import { getDb } from '../db'
 import { getConfig } from '../config'
@@ -15,6 +15,25 @@ class ClipboardRepository implements IClipboardRepository {
         } catch (error) {
             throw new Error(`Error getting clipboard history: ${error}`);
         }
+    }
+    getClipBoardHistoryPage(limit: number, cursor?: ClipboardCursor): { items: CopyItem[]; hasMore: boolean } {
+        const fetchCount = limit + 1;
+        let rows: CopyItem[];
+        if (cursor) {
+            rows = this.db.prepare(
+                `SELECT * FROM clipboardHistories
+                 WHERE copyTime < ? OR (copyTime = ? AND id < ?)
+                 ORDER BY copyTime DESC, id DESC
+                 LIMIT ?`
+            ).all(cursor.copyTime, cursor.copyTime, cursor.id, fetchCount) as CopyItem[];
+        } else {
+            rows = this.db.prepare(
+                `SELECT * FROM clipboardHistories ORDER BY copyTime DESC, id DESC LIMIT ?`
+            ).all(fetchCount) as CopyItem[];
+        }
+        const hasMore = rows.length > limit;
+        const items = hasMore ? rows.slice(0, limit) : rows;
+        return { items, hasMore };
     }
     addToClipBoardHistory(content: string): CopyItem {
         try {

@@ -1,7 +1,7 @@
 "use strict";
 const electron = require("electron");
 const api = {
-  getClipboardHistory: () => electron.ipcRenderer.invoke("get-clipboard-history"),
+  getClipboardHistory: (pageSize, cursor) => electron.ipcRenderer.invoke("get-clipboard-history", pageSize, cursor),
   onClipboardChanged: (cb) => {
     const listener = (_event, item) => cb(item);
     electron.ipcRenderer.on("clipboard:changed", listener);

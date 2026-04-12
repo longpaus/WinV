@@ -161,9 +161,9 @@ process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });
 
-ipcMain.handle('get-clipboard-history', () => {
+ipcMain.handle('get-clipboard-history', (_evt, pageSize: number, cursor?: { copyTime: string; id: number }) => {
   const repo = new ClipboardRepository();
-  return repo.getClipBoardHistory(20);
+  return repo.getClipBoardHistoryPage(pageSize, cursor);
 });
 
 ipcMain.handle('hide-window', () => {

@@ -34,4 +34,8 @@ function initSchema(db: DBType) {
     db.prepare(`
     CREATE INDEX IF NOT EXISTS idx_clipboard_copyTime ON clipboardHistories(copyTime)
     `).run();
+
+    db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_clipboard_copytime_id ON clipboardHistories(copyTime DESC, id DESC)
+    `).run();
 }
