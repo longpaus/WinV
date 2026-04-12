@@ -4,9 +4,23 @@ import { ClipboardHistory } from './types';
 import { HistorySidebar } from './components/HistorySidebar';
 import { ContentDisplay } from './components/ContentDisplay';
 
+const MAX_CLIPBOARD_ITEMS = 200;
+
 function App() {
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardHistory[]>([]);
   const [selectedItem, setSelectedItem] = useState<ClipboardHistory | null>(null);
+  const isFocusedRef = useRef(document.hasFocus());
+
+  useEffect(() => {
+    const onFocus = () => { isFocusedRef.current = true; };
+    const onBlur = () => { isFocusedRef.current = false; };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
 
   useEffect(() => {
     window.clipboardAPI.getClipboardHistory().then((history) => {
@@ -17,7 +31,13 @@ function App() {
     });
 
     const cleanup = window.clipboardAPI.onClipboardChanged((newItem) => {
-      setClipboardHistory((prev) => [newItem, ...prev]);
+      setClipboardHistory((prev) => {
+        const next = [newItem, ...prev];
+        if (!isFocusedRef.current && next.length > MAX_CLIPBOARD_ITEMS) {
+          return next.slice(0, MAX_CLIPBOARD_ITEMS);
+        }
+        return next;
+      });
       setSelectedItem((prev) => prev ?? newItem);
     });
 
