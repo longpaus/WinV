@@ -64,13 +64,14 @@ function App() {
     window.clipboardAPI.getClipboardHistory(PAGE_SIZE, cursor).then(({ items, hasMore: moreAvailable }) => {
       setClipboardHistory((prev) => {
         const combined = [...prev, ...items];
-        if (combined.length >= MAX_CLIPBOARD_ITEMS) {
-          setHasMore(false);
-          return combined.slice(0, MAX_CLIPBOARD_ITEMS);
-        }
-        setHasMore(moreAvailable);
-        return combined;
+        return combined.length >= MAX_CLIPBOARD_ITEMS
+          ? combined.slice(0, MAX_CLIPBOARD_ITEMS)
+          : combined;
       });
+      const totalAfter = clipboardHistory.length + items.length;
+      setHasMore(totalAfter < MAX_CLIPBOARD_ITEMS && moreAvailable);
+      setIsLoadingMore(false);
+    }).catch(() => {
       setIsLoadingMore(false);
     });
   }, [clipboardHistory, hasMore, isLoadingMore]);
@@ -141,7 +142,7 @@ function App() {
           selectedItem={selectedItem}
           onSelectItem={setSelectedItem}
           onLoadMore={loadMore}
-          hasMore={hasMore && clipboardHistory.length < MAX_CLIPBOARD_ITEMS}
+          hasMore={hasMore}
           isLoadingMore={isLoadingMore}
         />
         <ContentDisplay selectedItem={selectedItem} />

@@ -73,23 +73,27 @@ class ClipboardRepository {
     }
   }
   getClipBoardHistoryPage(limit, cursor) {
-    const fetchCount = limit + 1;
-    let rows;
-    if (cursor) {
-      rows = this.db.prepare(
-        `SELECT * FROM clipboardHistories
-                 WHERE copyTime < ? OR (copyTime = ? AND id < ?)
-                 ORDER BY copyTime DESC, id DESC
-                 LIMIT ?`
-      ).all(cursor.copyTime, cursor.copyTime, cursor.id, fetchCount);
-    } else {
-      rows = this.db.prepare(
-        `SELECT * FROM clipboardHistories ORDER BY copyTime DESC, id DESC LIMIT ?`
-      ).all(fetchCount);
+    try {
+      const fetchCount = limit + 1;
+      let rows;
+      if (cursor) {
+        rows = this.db.prepare(
+          `SELECT * FROM clipboardHistories
+                     WHERE copyTime < ? OR (copyTime = ? AND id < ?)
+                     ORDER BY copyTime DESC, id DESC
+                     LIMIT ?`
+        ).all(cursor.copyTime, cursor.copyTime, cursor.id, fetchCount);
+      } else {
+        rows = this.db.prepare(
+          `SELECT * FROM clipboardHistories ORDER BY copyTime DESC, id DESC LIMIT ?`
+        ).all(fetchCount);
+      }
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      return { items, hasMore };
+    } catch (error) {
+      throw new Error(`Error getting clipboard history page: ${error}`);
     }
-    const hasMore = rows.length > limit;
-    const items = hasMore ? rows.slice(0, limit) : rows;
-    return { items, hasMore };
   }
   addToClipBoardHistory(content) {
     try {
