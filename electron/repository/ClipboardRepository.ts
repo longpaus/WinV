@@ -10,7 +10,7 @@ class ClipboardRepository implements IClipboardRepository {
     }
     getClipBoardHistory(limit: number): CopyItem[] {
         try {
-            const clipboardHistory: CopyItem[] = this.db.prepare(`select * from clipboardHistories order by copyTime desc limit ${limit}`).all() as CopyItem[];
+            const clipboardHistory: CopyItem[] = this.db.prepare(`select * from clipboardHistories order by copyTime desc limit ?`).all(limit) as CopyItem[];
             return clipboardHistory;
         } catch (error) {
             throw new Error(`Error getting clipboard history: ${error}`);

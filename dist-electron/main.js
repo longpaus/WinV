@@ -66,7 +66,7 @@ class ClipboardRepository {
   }
   getClipBoardHistory(limit) {
     try {
-      const clipboardHistory = this.db.prepare(`select * from clipboardHistories order by copyTime desc limit ${limit}`).all();
+      const clipboardHistory = this.db.prepare(`select * from clipboardHistories order by copyTime desc limit ?`).all(limit);
       return clipboardHistory;
     } catch (error) {
       throw new Error(`Error getting clipboard history: ${error}`);
@@ -130,7 +130,7 @@ class ClipboardTracker {
   tick() {
     const currText = clipboard.readText();
     if (currText !== this.lastText) {
-      console.log("add to db: ", currText);
+      console.log("clipboard changed, saving to db");
       this.lastText = currText;
       const copyItem = this.repo.addToClipBoardHistory(currText);
       this.onChange(copyItem);
@@ -145,7 +145,6 @@ function createMainWindow(opts) {
   return win2;
 }
 function broadcast(channel, payload) {
-  console.log("window values: ", windows.values());
   for (const win2 of windows.values()) {
     if (!win2.isDestroyed()) win2.webContents.send(channel, payload);
   }
@@ -181,7 +180,7 @@ function getOrCreateWindow() {
       preload: PRELOAD_PATH,
       contextIsolation: true,
       nodeIntegration: false,
-      // If you want background timers to keep running when hidden:
+      sandbox: true,
       backgroundThrottling: false
     }
   });
@@ -258,6 +257,7 @@ process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason);
 });
 ipcMain.handle("get-clipboard-history", (_evt, pageSize, cursor) => {
+  pageSize = Math.max(1, Math.min(Math.floor(pageSize) || 50, 500));
   const repo = new ClipboardRepository();
   return repo.getClipBoardHistoryPage(pageSize, cursor);
 });

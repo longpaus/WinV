@@ -51,7 +51,7 @@ function getOrCreateWindow() {
       preload: PRELOAD_PATH,
       contextIsolation: true,
       nodeIntegration: false,
-      // If you want background timers to keep running when hidden:
+      sandbox: true,
       backgroundThrottling: false,
     },
   });
@@ -162,6 +162,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 ipcMain.handle('get-clipboard-history', (_evt, pageSize: number, cursor?: { copyTime: string; id: number }) => {
+  pageSize = Math.max(1, Math.min(Math.floor(pageSize) || 50, 500));
   const repo = new ClipboardRepository();
   return repo.getClipBoardHistoryPage(pageSize, cursor);
 });
