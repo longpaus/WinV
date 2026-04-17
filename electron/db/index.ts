@@ -28,8 +28,14 @@ function initSchema(db: DBType) {
     CREATE TABLE IF NOT EXISTS clipboardHistories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         content TEXT NOT NULL,
-        copyTime TEXT NOT NULL
+        copyTime TEXT NOT NULL,
+        isStarred INTEGER NOT NULL DEFAULT 0
     )`).run();
+
+    const cols = db.prepare(`PRAGMA table_info(clipboardHistories)`).all() as { name: string }[];
+    if (!cols.some(c => c.name === 'isStarred')) {
+        db.prepare(`ALTER TABLE clipboardHistories ADD COLUMN isStarred INTEGER NOT NULL DEFAULT 0`).run();
+    }
 
     db.prepare(`
     CREATE INDEX IF NOT EXISTS idx_clipboard_copyTime ON clipboardHistories(copyTime)
@@ -37,5 +43,9 @@ function initSchema(db: DBType) {
 
     db.prepare(`
     CREATE INDEX IF NOT EXISTS idx_clipboard_copytime_id ON clipboardHistories(copyTime DESC, id DESC)
+    `).run();
+
+    db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_clipboard_star_copytime_id ON clipboardHistories(isStarred DESC, copyTime DESC, id DESC)
     `).run();
 }

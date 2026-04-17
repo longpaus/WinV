@@ -13,11 +13,51 @@ function CopyButton({ content }: { content: string }) {
       onClick={onClick}
       aria-label="Paste"
       title="Paste"
-      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] text-[color:var(--fg-subtle)] hover:text-[color:var(--fg)] hover:bg-[color:var(--bg-hover)] transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+      className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] text-[color:var(--fg-subtle)] hover:text-[color:var(--fg)] hover:bg-[color:var(--bg-hover)] transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+    </button>
+  );
+}
+
+function StarButton({
+  isStarred,
+  onToggle,
+}: {
+  isStarred: boolean;
+  onToggle: () => void;
+}) {
+  const onClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={isStarred ? 'Unstar' : 'Star'}
+      title={isStarred ? 'Unstar' : 'Star'}
+      className={`h-7 w-7 inline-flex items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] hover:bg-[color:var(--bg-hover)] transition-opacity ${
+        isStarred
+          ? 'text-amber-400 opacity-100'
+          : 'text-[color:var(--fg-subtle)] hover:text-[color:var(--fg)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+      }`}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill={isStarred ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
       </svg>
     </button>
   );
@@ -28,8 +68,11 @@ interface HistorySidebarProps {
   selectedItem: ClipboardHistory | null;
   onSelectItem: (item: ClipboardHistory) => void;
   onLoadMore: () => void;
+  onToggleStar: (id: number) => void;
   hasMore: boolean;
   isLoadingMore: boolean;
+  mode: 'recent' | 'search';
+  searchQuery: string;
 }
 
 function formatRelative(iso: string): string {
@@ -56,8 +99,11 @@ export function HistorySidebar({
   selectedItem,
   onSelectItem,
   onLoadMore,
+  onToggleStar,
   hasMore,
   isLoadingMore,
+  mode,
+  searchQuery,
 }: HistorySidebarProps) {
   const selectedRef = useRef<HTMLLIElement | null>(null);
 
@@ -70,9 +116,15 @@ export function HistorySidebar({
       <aside className="w-[38%] h-full flex flex-col border-r border-[color:var(--border)]">
         <div className="flex-1 flex items-center justify-center px-6">
           <p className="text-xs text-[color:var(--fg-subtle)] text-center leading-relaxed">
-            Nothing copied yet.
-            <br />
-            Copy something and it will appear here.
+            {mode === 'search' ? (
+              <>No matches for &ldquo;{searchQuery}&rdquo;.</>
+            ) : (
+              <>
+                Nothing copied yet.
+                <br />
+                Copy something and it will appear here.
+              </>
+            )}
           </p>
         </div>
       </aside>
@@ -83,19 +135,20 @@ export function HistorySidebar({
     <aside className="w-[38%] h-full flex flex-col min-h-0 border-r border-[color:var(--border)]">
       <div className="px-4 pt-3 pb-2">
         <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[color:var(--fg-subtle)]">
-          Recent
+          {mode === 'search' ? 'Results' : 'Recent'}
         </p>
       </div>
       <ul className="flex-1 min-h-0 overflow-y-auto px-2 pb-2 space-y-0.5">
         {history.map((item) => {
           const isSelected = selectedItem?.id === item.id;
+          const isStarred = Boolean(item.isStarred);
           return (
             <li
               key={item.id}
               ref={isSelected ? selectedRef : null}
               onClick={() => onSelectItem(item)}
               title={new Date(item.copyTime).toLocaleString()}
-              className={`group relative cursor-pointer rounded-[10px] px-3 py-2.5 pr-10 transition-colors ${
+              className={`group relative cursor-pointer rounded-[10px] px-3 py-2.5 pr-[76px] transition-colors ${
                 isSelected
                   ? 'bg-[color:var(--accent-bg)]'
                   : 'hover:bg-[color:var(--bg-hover)]'
@@ -119,7 +172,13 @@ export function HistorySidebar({
               <p className="mt-1 text-[11px] text-[color:var(--fg-subtle)]">
                 {formatRelative(item.copyTime)}
               </p>
-              <CopyButton content={item.content} />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <StarButton
+                  isStarred={isStarred}
+                  onToggle={() => onToggleStar(item.id)}
+                />
+                <CopyButton content={item.content} />
+              </div>
             </li>
           );
         })}

@@ -167,6 +167,17 @@ ipcMain.handle('get-clipboard-history', (_evt, pageSize: number, cursor?: { copy
   return repo.getClipBoardHistoryPage(pageSize, cursor);
 });
 
+ipcMain.handle('search-clipboard-history', (_evt, query: string, pageSize: number, cursor?: { isStarred: number; copyTime: string; id: number }) => {
+  pageSize = Math.max(1, Math.min(Math.floor(pageSize) || 50, 500));
+  const repo = new ClipboardRepository();
+  return repo.searchClipBoardHistory(typeof query === 'string' ? query : '', pageSize, cursor);
+});
+
+ipcMain.handle('toggle-star', (_evt, id: number) => {
+  const repo = new ClipboardRepository();
+  return repo.toggleStar(id);
+});
+
 ipcMain.handle('hide-window', () => {
   if (win && !win.isDestroyed()) win.hide();
 });
