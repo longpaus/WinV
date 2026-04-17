@@ -7,8 +7,21 @@ A lightweight clipboard manager for macOS. Press `⌥V` to instantly access your
 - Tracks clipboard history automatically in the background
 - Global hotkey `⌥V` to open/close the window
 - Click any item to paste it into the active app
+- Star items to pin them to the top and protect them from auto-deletion
+- Full-text search across clipboard history
 - History stored locally in SQLite — nothing leaves your machine
 - Configurable history retention (default: 30 days)
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `⌥V` | Open / close window |
+| `↑` / `↓` | Navigate items |
+| `Enter` | Paste selected item |
+| `⌘F` or `/` | Focus search bar |
+| `↓` (in search bar) | Jump to first result |
+| `Escape` | Clear search → blur search bar → hide window |
 
 ## Install
 
