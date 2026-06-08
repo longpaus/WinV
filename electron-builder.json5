@@ -12,6 +12,15 @@
     "dist-electron"
   ],
   "mac": {
+    "identity": null,
+    // winv-paste: compiled keystroke helper that ships inside the app so it
+    // inherits Winv's Accessibility grant (see electron/main.ts paste-item).
+    // Compile before building: swiftc -O native/winv-paste.swift -o native/winv-paste
+    "extraResources": [
+      { "from": "native/winv-paste", "to": "winv-paste" }
+    ],
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist",
     "target": [
       {
         "target": "dmg",

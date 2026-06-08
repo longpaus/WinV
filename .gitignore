@@ -26,3 +26,6 @@ dist-ssr
 
 
 release
+
+# Compiled native helper (built from native/winv-paste.swift via `npm run build:helper`)
+native/winv-paste

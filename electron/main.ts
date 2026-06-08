@@ -195,14 +195,22 @@ ipcMain.handle('paste-item', async (_evt, text: string) => {
 
   if (process.platform !== 'darwin') return;
 
+  // Paste by posting Cmd+V from a helper that ships INSIDE Winv.app.
+  //
+  // We used to shell out to /usr/bin/osascript ("tell System Events to
+  // keystroke v ..."). osascript is a shared Apple platform binary, so macOS
+  // attributes the keystroke to osascript itself — not to Winv — and refuses
+  // to honor Winv's Accessibility grant (error 1002 "osascript is not allowed
+  // to send keystrokes"). The bundled `winv-paste` helper inherits Winv as its
+  // responsible process, so Winv's grant applies and the keystroke is allowed.
+  const helperPath = app.isPackaged
+    ? join(process.resourcesPath, 'winv-paste')
+    : join(process.env.APP_ROOT ?? path.join(__dirname, '..'), 'native', 'winv-paste');
+
   await new Promise<void>((resolve) => {
-    execFile(
-      '/usr/bin/osascript',
-      ['-e', 'tell application "System Events" to keystroke "v" using command down'],
-      (err) => {
-        if (err) console.error('paste-item osascript failed:', err);
-        resolve();
-      }
-    );
+    execFile(helperPath, [], (err) => {
+      if (err) console.error('paste-item helper failed:', err);
+      resolve();
+    });
   });
 });
