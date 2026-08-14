@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { getDb } from './db';
 import ClipboardTracker from './clipboard';
 import ClipboardRepository from './repository/ClipboardRepository';
-import { createMainWindow, broadcast } from './windowManager';
+import { createMainWindow, broadcast, positionWindowNearCursor } from './windowManager';
 import { CopyItem } from './types/clipboard';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -84,10 +84,11 @@ function getOrCreateWindow() {
   return win;
 }
 
-function revealWindow() {
+function revealWindow({ nearCursor = false }: { nearCursor?: boolean } = {}) {
   const w = getOrCreateWindow();
 
   if (w.isMinimized()) w.restore();
+  if (nearCursor) positionWindowNearCursor(w);
 
   // Show & focus quickly without reloading the page
   w.show();
@@ -111,7 +112,9 @@ function revealWindow() {
 // Global shortcut
 // ----------------------
 function registerShortcuts() {
-  const ok = globalShortcut.register('Alt+V', revealWindow); // ⌥V
+  const ok = globalShortcut.register('Alt+V', () => {
+    revealWindow({ nearCursor: true });
+  }); // ⌥V
 
   if (!ok) {
     console.error('Failed to register global shortcut Alt+V');
