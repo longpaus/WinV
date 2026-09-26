@@ -41,7 +41,7 @@ function getOrCreateWindow() {
 
   win = createMainWindow({
     title: app.getName(),
-    icon: path.join(process.env.VITE_PUBLIC!, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC!, 'icon.png'),
     width: 820,
     height: 520,
     show: false, // keep hidden until we want to reveal
@@ -126,6 +126,9 @@ app.whenReady()
     console.log('App Name:', app.getName());
     console.log('userData:', app.getPath('userData'));
     console.log('Preload :', PRELOAD_PATH);
+
+    // Packaged builds get the icon from the .icns; in dev the Dock would show Electron's
+    if (VITE_DEV_SERVER_URL) app.dock?.setIcon(path.join(process.env.VITE_PUBLIC!, 'icon.png'));
 
     getDb();
 
