@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build:helper": "swiftc -O native/winv-paste.swift -o native/winv-paste",
+    "build:icons": "./scripts/build-icons.sh",
     "build": "npm run build:helper && tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
